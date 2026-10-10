@@ -2,7 +2,7 @@
 
 ## الهدف
 
-المشروع يستخدم Clean / Hexagonal Architecture بشكل مبسط حتى يظل مفهومًا وقابلًا للتعديل.
+المشروع يستخدم Clean / Hexagonal Architecture بشكل مبسط.
 
 ## قاعدة الاعتماد
 
@@ -17,58 +17,43 @@ application  ---> domain
 infrastructure
 ```
 
-- `domain` لا يعتمد على Framework.
-- `application` يعتمد على Domain وعلى Ports صغيرة.
-- `infrastructure` ينفذ Ports باستخدام Instaloader وSQLite وurllib.
-- `presentation` هي PySide6 فقط.
-- `composition.py` يجمع الأجزاء عبر Dependency Injection.
-
-## قرار عدم تسجيل الدخول
-
-هذه النسخة **لا تحتوي Login أو Browser Cookie Import أو Session Storage**.
-
-السبب:
-- البرنامج للاستخدام الشخصي.
-- الهدف الأساسي تنزيل ومزامنة الحسابات العامة.
-- إزالة قراءة Cookies تقلل التعقيد ونطاق المخاطر الأمنية.
-
-## المزامنة اليدوية
+## تسجيل الدخول
 
 ```text
-UI -> SyncProfileUseCase -> MediaSource
-                       -> MediaCatalog
-                       -> BinaryDownloader
+InstagramLoginDialog (QWebEngine)
+  -> Cookie Store الخاص بالتطبيق
+  -> ConnectSessionUseCase
+  -> SessionWriter Port
+  -> InstaloaderSessionWriter
+  -> test_login()
+  -> local .session file
 ```
 
-المفتاح الفريد لكل عنصر:
+التطبيق لا يقرأ Browser Cookies الخارجية.
+
+## المزامنة
 
 ```text
-(profile, shortcode, item_index)
+UI
+ -> SyncProfileUseCase
+ -> InstaloaderMediaSource (optional saved session)
+ -> SQLiteMediaCatalog
+ -> BinaryDownloader
 ```
+
+لو لا توجد Session يعمل على المحتوى العام المتاح.
+لو توجد Session يمكنه قراءة المحتوى الخاص الذي يسمح به الحساب المتصل.
 
 ## Watch List
 
-Watch List لا تُقرأ من قائمة Following في Instagram.
-
-المستخدم هو الذي يضيف الحسابات صراحةً داخل البرنامج، وتخزن في:
-
-```text
-watch_profiles
-- profile
-- added_at
-- last_checked_at
-```
+Watch List هي الحسابات التي يضيفها المستخدم صراحةً فقط.
 
 عند فتح البرنامج:
 
 ```text
 QTimer.singleShot
  -> SyncWatchListUseCase
- -> list_profiles()
- -> SyncProfileUseCase لكل حساب مختار
+ -> SyncProfileUseCase لكل حساب
  -> تنزيل الجديد فقط
- -> mark_checked()
  -> ينتهي الـWorker
 ```
-
-لا يوجد Timer دوري ولا Polling كل 15 أو 30 دقيقة.

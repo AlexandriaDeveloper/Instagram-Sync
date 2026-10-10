@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
 from typing import Protocol
 
 from instagram_sync.domain.models import (
     MediaIdentity,
     RemoteMedia,
+    SessionInfo,
     SyncRequest,
     SyncResult,
     WatchProfile,
@@ -54,6 +55,15 @@ class BinaryDownloader(Protocol):
     """مسؤول عن تنزيل ملف Binary من URL إلى Path."""
 
     def download(self, url: str, path: Path) -> None: ...
+
+
+class SessionWriter(Protocol):
+    """حفظ Session موثقة قادمة من متصفح التطبيق نفسه."""
+
+    def save_from_cookies(
+        self,
+        cookies: Mapping[str, str],
+    ) -> SessionInfo: ...
 
 
 class WatchListRepository(Protocol):

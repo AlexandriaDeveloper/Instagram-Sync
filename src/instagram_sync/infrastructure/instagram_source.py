@@ -1,4 +1,4 @@
-"""Adapter لقراءة Posts وReels العامة باستخدام Instaloader."""
+"""Adapter لقراءة Posts وReels باستخدام Instaloader."""
 
 from __future__ import annotations
 
@@ -7,13 +7,15 @@ from collections.abc import Iterator
 import instaloader
 
 from instagram_sync.domain.models import MediaIdentity, RemoteMedia
+from instagram_sync.paths import session_path
 
 
 class InstaloaderMediaSource:
-    """تحويل Objects الخاصة بـInstaloader إلى Domain Models بسيطة."""
+    """قراءة المحتوى العام أو الخاص الذي تسمح به Session الحالية."""
 
-    def __init__(self) -> None:
-        """إنشاء Client بدون Login أو Session لأن التطبيق للاستخدام العام فقط."""
+    def __init__(self, username: str | None = None) -> None:
+        """إنشاء Client وتحميل Session محلية عند وجود حساب متصل."""
+        self._username = (username or "").strip().lower()
         self._loader = instaloader.Instaloader(
             download_pictures=False,
             download_videos=False,
@@ -25,13 +27,27 @@ class InstaloaderMediaSource:
             quiet=True,
         )
 
+        if self._username:
+            self._load_saved_session()
+
+    def _load_saved_session(self) -> None:
+        """تحميل Session فقط لو ملفها موجود محليًا."""
+        path = session_path(self._username)
+        if not path.exists():
+            return
+
+        self._loader.load_session_from_file(
+            self._username,
+            filename=str(path),
+        )
+
     def iter_profile_media(
         self,
         profile_name: str,
         include_posts: bool = True,
         include_reels: bool = True,
     ) -> Iterator[RemoteMedia]:
-        """إرجاع Media العامة المتاحة للحساب."""
+        """إرجاع Media التي يسمح Instagram للجلسة الحالية برؤيتها."""
         profile = instaloader.Profile.from_username(
             self._loader.context,
             profile_name,

@@ -47,6 +47,13 @@ class SyncResult:
 
 
 @dataclass(frozen=True, slots=True)
+class SessionInfo:
+    """معلومات Session تم التحقق منها بدون Password."""
+
+    username: str
+
+
+@dataclass(frozen=True, slots=True)
 class WatchProfile:
     """حساب اختاره المستخدم صراحةً للمزامنة عند فتح البرنامج."""
 

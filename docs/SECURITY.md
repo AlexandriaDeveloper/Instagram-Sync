@@ -1,27 +1,34 @@
 # Security Notes
 
-## المبادئ
+## تسجيل الدخول
 
-1. البرنامج لا يطلب أو يخزن Password لـInstagram.
-2. البرنامج لا يقرأ Cookies من أي متصفح.
-3. لا يوجد Session Storage داخل التطبيق.
-4. SQLite وDownloads فقط هي البيانات المحلية الأساسية.
-5. اسم Target Profile يتم التحقق منه لمنع Path Traversal.
-6. الملف ينزل أولًا كـ`.part` ولا يتحول للاسم النهائي إلا بعد اكتماله.
-7. لا يوجد Telemetry أو Analytics أو Server خاص بالمشروع.
-8. لا يوجد Licensing أو Payment لأن المشروع شخصي.
+التطبيق يحتاج Session عند الوصول إلى حساب Private.
 
-## حدود الأمان والوظيفة
+التصميم الحالي يتجنب قراءة Cookies المتصفح الأساسي تمامًا:
 
-التطبيق يستهدف الحسابات العامة فقط.
+- لا توجد مكتبة browser-cookie3.
+- لا يقرأ Chrome أو Edge أو Firefox.
+- يفتح Instagram داخل QWebEngine مخصص للتطبيق.
+- المستخدم يكتب Password و2FA مباشرة داخل صفحة Instagram.
+- كود التطبيق لا يخزن Password.
+- بعد نجاح الدخول، يتم حفظ Session محلية فقط.
 
-Instagram قد يغير Endpoints أو Rate Limits أو يطلب Login لبعض المحتوى العام.
-لو حدث ذلك، يتم التعامل معه كتغيير وظيفي مستقبلي وليس سببًا لإعادة إدخال Cookie Reading تلقائيًا.
+ملف Session حساس لأنه يمثل جلسة الحساب، لذلك:
 
-## Audit Checklist
+- محفوظ خارج Repository.
+- محجوب بواسطة .gitignore.
+- لا يسجل محتواه في Logs.
+- لا يجب مشاركته مع أي شخص.
 
-- تأكد أن Dependencies لا تحتوي مكتبات Browser Cookie Reading.
-- تأكد أن Git لا يحتوي Passwords أو Cookies أو Sessions.
-- راجع Dependencies قبل التحديث.
-- شغل `ruff check src tests`.
-- شغل `pytest -q`.
+## حدود الصلاحية
+
+وجود Session لا يتجاوز Privacy في Instagram.
+
+الحساب Private يعمل فقط إذا كان الحساب المتصل يستطيع بالفعل رؤية محتواه.
+لا يوجد أي تجاوز لطلب Follow أو 2FA أو قيود الحساب.
+
+## أمان الملفات
+
+- اسم Target Profile يتم التحقق منه لمنع Path Traversal.
+- التنزيل يذهب إلى .part أولًا ثم يتحول للاسم النهائي بعد النجاح.
+- لا يوجد Telemetry أو Analytics أو Server مركزي.
