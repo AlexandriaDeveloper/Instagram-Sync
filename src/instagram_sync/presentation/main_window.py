@@ -6,13 +6,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import ClassVar
 
 from PySide6.QtCore import QSettings, QThread, QTimer, Signal
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
-    QComboBox,
     QFileDialog,
     QFormLayout,
     QGroupBox,
@@ -30,7 +28,6 @@ from PySide6.QtWidgets import (
 )
 
 from instagram_sync.composition import (
-    build_connect_session_use_case,
     build_sync_use_case,
     build_watch_list_use_case,
     build_watch_sync_use_case,
@@ -45,15 +42,10 @@ class SyncWorker(QThread):
     completed = Signal(int, int)
     failed = Signal(str)
 
-    def __init__(
-        self,
-        request: SyncRequest,
-        username: str,
-    ) -> None:
+    def __init__(self, request: SyncRequest) -> None:
         """حفظ مدخلات العملية فقط؛ الـUse Case ينشأ داخل الـThread."""
         super().__init__()
         self._request = request
-        self._username = username
         self._cancelled = False
 
     def cancel(self) -> None:
@@ -63,7 +55,7 @@ class SyncWorker(QThread):
     def run(self) -> None:
         """تنفيذ المزامنة وإرسال النتيجة للواجهة عبر Signals."""
         try:
-            use_case = build_sync_use_case(self._username)
+            use_case = build_sync_use_case()
             result = use_case.execute(
                 self._request,
                 on_status=self.status.emit,
@@ -81,15 +73,10 @@ class WatchSyncWorker(QThread):
     status = Signal(str)
     completed = Signal(int, int, int, int)
 
-    def __init__(
-        self,
-        destination: Path,
-        username: str,
-    ) -> None:
-        """حفظ إعدادات التشغيل بدون أي Polling داخلي."""
+    def __init__(self, destination: Path) -> None:
+        """حفظ مجلد التنزيل فقط؛ لا Login ولا Polling داخلي."""
         super().__init__()
         self._destination = destination
-        self._username = username
         self._cancelled = False
 
     def cancel(self) -> None:
@@ -98,7 +85,7 @@ class WatchSyncWorker(QThread):
 
     def run(self) -> None:
         """تنفيذ Check واحد فقط ثم إنهاء Thread."""
-        use_case = build_watch_sync_use_case(self._username)
+        use_case = build_watch_sync_use_case()
         summary = use_case.execute(
             destination=self._destination,
             on_status=self.status.emit,
@@ -112,48 +99,14 @@ class WatchSyncWorker(QThread):
         )
 
 
-class SessionWorker(QThread):
-    """استيراد Session قد يقرأ ملفات المتصفح لذلك يعمل خارج UI Thread."""
-
-    completed = Signal(str, str)
-    failed = Signal(str)
-
-    def __init__(self, browser: str) -> None:
-        """حفظ اسم المتصفح المختار."""
-        super().__init__()
-        self._browser = browser
-
-    def run(self) -> None:
-        """استيراد Session وإرجاع اسم المستخدم الحقيقي المكتشف."""
-        try:
-            use_case = build_connect_session_use_case()
-            info = use_case.execute(self._browser)
-            self.completed.emit(info.username, info.browser)
-        # Worker boundary: أخطاء قراءة المتصفح يجب أن تظهر للمستخدم.
-        except Exception as exc:  # noqa: BLE001
-            self.failed.emit(str(exc))
-
-
 class MainWindow(QMainWindow):
     """واجهة التطبيق الرئيسية."""
-
-    _SUPPORTED_BROWSERS: ClassVar[tuple[str, ...]] = (
-        "Chrome",
-        "Edge",
-        "Firefox",
-        "Brave",
-        "Chromium",
-        "LibreWolf",
-        "Opera",
-        "Opera_GX",
-        "Vivaldi",
-    )
 
     def __init__(self) -> None:
         """إنشاء الواجهة وتحميل الإعدادات ثم جدولة Check واحد عند الفتح."""
         super().__init__()
         self.setWindowTitle("Instagram Sync")
-        self.resize(820, 720)
+        self.resize(820, 680)
 
         self._settings = QSettings(
             "AlexandriaDeveloper",
@@ -161,7 +114,6 @@ class MainWindow(QMainWindow):
         )
         self._sync_worker: SyncWorker | None = None
         self._watch_worker: WatchSyncWorker | None = None
-        self._session_worker: SessionWorker | None = None
 
         self._build_ui()
         self._load_settings()
@@ -179,7 +131,8 @@ class MainWindow(QMainWindow):
         layout.addWidget(QLabel("<h2>Instagram Sync</h2>"))
         layout.addWidget(
             QLabel(
-                "Manual sync + one startup check for profiles you explicitly watch."
+                "Public profiles only — manual sync plus one startup check "
+                "for profiles you explicitly watch."
             )
         )
 
@@ -188,20 +141,6 @@ class MainWindow(QMainWindow):
         self._profile = QLineEdit()
         self._profile.setPlaceholderText("target_profile")
         form.addRow("Target profile:", self._profile)
-
-        self._username = QLineEdit()
-        self._username.setReadOnly(True)
-        self._username.setPlaceholderText("No saved Instagram session")
-        form.addRow("Connected account:", self._username)
-
-        browser_row = QHBoxLayout()
-        self._browser = QComboBox()
-        self._browser.addItems(self._SUPPORTED_BROWSERS)
-        self._connect_button = QPushButton("Connect from Browser")
-        self._connect_button.clicked.connect(self._connect_from_browser)
-        browser_row.addWidget(self._browser)
-        browser_row.addWidget(self._connect_button)
-        form.addRow("Browser session:", browser_row)
 
         destination_row = QHBoxLayout()
         self._destination = QLineEdit()
@@ -264,11 +203,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self._log)
 
     def _load_settings(self) -> None:
-        """استرجاع الإعدادات غير الحساسة فقط."""
-        self._username.setText(
-            self._settings.value("username", "", str)
-        )
-
+        """استرجاع مجلد التنزيل فقط لأنه الإعداد الوحيد المطلوب."""
         default_destination = str(
             Path.home() / "Downloads" / "InstagramSync"
         )
@@ -280,28 +215,11 @@ class MainWindow(QMainWindow):
             )
         )
 
-        saved_browser = self._settings.value(
-            "browser",
-            "Chrome",
-            str,
-        )
-        browser_index = self._browser.findText(saved_browser)
-        if browser_index >= 0:
-            self._browser.setCurrentIndex(browser_index)
-
     def _save_settings(self) -> None:
-        """حفظ بيانات غير حساسة فقط؛ لا Cookies ولا Password."""
-        self._settings.setValue(
-            "username",
-            self._username.text().strip(),
-        )
+        """حفظ مجلد التنزيل فقط؛ لا بيانات دخول أو Cookies."""
         self._settings.setValue(
             "destination",
             self._destination.text().strip(),
-        )
-        self._settings.setValue(
-            "browser",
-            self._browser.currentText(),
         )
 
     def _browse(self) -> None:
@@ -338,55 +256,6 @@ class MainWindow(QMainWindow):
             self._progress.setRange(0, 1)
             self._progress.setValue(1)
 
-    def _connect_from_browser(self) -> None:
-        """بدء استيراد Session من المتصفح بدون طلب Password."""
-        if self._session_worker and self._session_worker.isRunning():
-            return
-
-        self._connect_button.setEnabled(False)
-        self._log.append(
-            "Reading Instagram session from the selected browser..."
-        )
-
-        self._session_worker = SessionWorker(
-            self._browser.currentText(),
-        )
-        self._session_worker.completed.connect(
-            self._session_connected,
-        )
-        self._session_worker.failed.connect(
-            self._session_failed,
-        )
-        self._session_worker.start()
-
-    def _session_connected(
-        self,
-        username: str,
-        browser: str,
-    ) -> None:
-        """تحديث الواجهة بعد نجاح استيراد Session."""
-        self._connect_button.setEnabled(True)
-        self._username.setText(username)
-        self._save_settings()
-        self._log.append(
-            f"Connected as @{username} using {browser}."
-        )
-        QMessageBox.information(
-            self,
-            "Instagram session connected",
-            f"Connected as @{username}.",
-        )
-
-    def _session_failed(self, message: str) -> None:
-        """عرض سبب فشل Session بدون كشف بيانات حساسة."""
-        self._connect_button.setEnabled(True)
-        self._log.append(f"SESSION ERROR: {message}")
-        QMessageBox.critical(
-            self,
-            "Session connection failed",
-            message,
-        )
-
     def _start_manual_sync(self) -> None:
         """مزامنة الحساب المكتوب يدويًا فقط."""
         if self._is_sync_running():
@@ -421,10 +290,7 @@ class MainWindow(QMainWindow):
             include_reels=self._reels.isChecked(),
         )
 
-        self._sync_worker = SyncWorker(
-            request=request,
-            username=self._username.text().strip(),
-        )
+        self._sync_worker = SyncWorker(request=request)
         self._sync_worker.status.connect(self._log.append)
         self._sync_worker.completed.connect(self._manual_sync_completed)
         self._sync_worker.failed.connect(self._sync_failed)
@@ -492,7 +358,6 @@ class MainWindow(QMainWindow):
 
         self._watch_worker = WatchSyncWorker(
             destination=Path(destination),
-            username=self._username.text().strip(),
         )
         self._watch_worker.status.connect(self._log.append)
         self._watch_worker.completed.connect(self._watch_sync_completed)

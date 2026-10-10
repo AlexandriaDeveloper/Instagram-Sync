@@ -12,7 +12,6 @@ dependencies = [
   "PySide6>=6.8,<7",
   "instaloader>=4.14,<5",
   "platformdirs>=4.3,<5",
-  "browser-cookie3>=0.20,<1",
 ]
 
 [project.optional-dependencies]

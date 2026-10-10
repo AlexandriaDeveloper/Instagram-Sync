@@ -1,7 +1,4 @@
-"""مسارات البيانات المحلية الخاصة بالتطبيق.
-
-هذا الملف مسؤول فقط عن تحديد أماكن قاعدة البيانات وملفات الجلسة.
-"""
+"""مسارات البيانات المحلية الخاصة بالتطبيق."""
 
 from pathlib import Path
 
@@ -21,16 +18,3 @@ def app_data_dir() -> Path:
 def database_path() -> Path:
     """إرجاع مسار قاعدة SQLite المحلية."""
     return app_data_dir() / "instagram_sync.sqlite3"
-
-
-def session_dir() -> Path:
-    """إرجاع مجلد Sessions وإنشاؤه خارج مستودع Git."""
-    path = app_data_dir() / "sessions"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
-
-
-def session_path(username: str) -> Path:
-    """إنشاء مسار Session آمن بناءً على اسم مستخدم Instagram."""
-    safe_username = username.strip().lower()
-    return session_dir() / f"{safe_username}.session"

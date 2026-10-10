@@ -47,14 +47,6 @@ class SyncResult:
 
 
 @dataclass(frozen=True, slots=True)
-class SessionInfo:
-    """معلومات Session ناجحة بدون Password أو Cookie values."""
-
-    username: str
-    browser: str
-
-
-@dataclass(frozen=True, slots=True)
 class WatchProfile:
     """حساب اختاره المستخدم صراحةً للمزامنة عند فتح البرنامج."""
 

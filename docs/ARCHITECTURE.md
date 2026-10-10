@@ -19,9 +19,18 @@ infrastructure
 
 - `domain` لا يعتمد على Framework.
 - `application` يعتمد على Domain وعلى Ports صغيرة.
-- `infrastructure` ينفذ Ports باستخدام Instaloader وSQLite وurllib وbrowser_cookie3.
+- `infrastructure` ينفذ Ports باستخدام Instaloader وSQLite وurllib.
 - `presentation` هي PySide6 فقط.
 - `composition.py` يجمع الأجزاء عبر Dependency Injection.
+
+## قرار عدم تسجيل الدخول
+
+هذه النسخة **لا تحتوي Login أو Browser Cookie Import أو Session Storage**.
+
+السبب:
+- البرنامج للاستخدام الشخصي.
+- الهدف الأساسي تنزيل ومزامنة الحسابات العامة.
+- إزالة قراءة Cookies تقلل التعقيد ونطاق المخاطر الأمنية.
 
 ## المزامنة اليدوية
 
@@ -63,13 +72,3 @@ QTimer.singleShot
 ```
 
 لا يوجد Timer دوري ولا Polling كل 15 أو 30 دقيقة.
-
-يوجد زر `Check Watch List Now` لعمل نفس الـCheck يدويًا عند الحاجة.
-
-## SOLID
-
-- SRP: كل Adapter وUse Case له مسؤولية واحدة.
-- OCP: يمكن استبدال Instagram/SQLite/Downloader عبر Ports.
-- LSP: أي Implementation يحقق Port يمكن حقنه مكان آخر.
-- ISP: Interfaces صغيرة بدل Service ضخم.
-- DIP: Application Layer تعتمد على Abstractions.

@@ -8,7 +8,6 @@ REM إنشاء تطبيق GUI بدون نافذة Console.
 pyinstaller --noconfirm --clean --windowed ^
   --name InstagramSync ^
   --paths src ^
-  --collect-all browser_cookie3 ^
   src\instagram_sync\__main__.py
 
 echo.

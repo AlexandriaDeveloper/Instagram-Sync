@@ -9,7 +9,6 @@ from typing import Protocol
 from instagram_sync.domain.models import (
     MediaIdentity,
     RemoteMedia,
-    SessionInfo,
     SyncRequest,
     SyncResult,
     WatchProfile,
@@ -55,12 +54,6 @@ class BinaryDownloader(Protocol):
     """مسؤول عن تنزيل ملف Binary من URL إلى Path."""
 
     def download(self, url: str, path: Path) -> None: ...
-
-
-class BrowserSessionImporter(Protocol):
-    """مسؤول عن استيراد Session من متصفح محلي."""
-
-    def import_session(self, browser: str) -> SessionInfo: ...
 
 
 class WatchListRepository(Protocol):
