@@ -8,6 +8,7 @@ from concurrent.futures import CancelledError
 
 import instaloader
 
+from instagram_sync.application.errors import InstagramRateLimitError
 from instagram_sync.domain.models import MediaIdentity, RemoteMedia
 from instagram_sync.paths import session_path
 
@@ -99,6 +100,17 @@ class InstaloaderMediaSource:
 
             if include_reels:
                 yield from self._iter_posts(iter(profile.get_reels()))
+        except instaloader.exceptions.ConnectionException as exc:
+            # Instaloader يغلّف 429 داخل ConnectionException عند آخر محاولة.
+            error: BaseException | None = exc
+            seen: set[int] = set()
+            while error is not None and id(error) not in seen:
+                seen.add(id(error))
+                if isinstance(error, instaloader.exceptions.TooManyRequestsException):
+                    self._raise_if_cancelled()
+                    raise InstagramRateLimitError() from exc
+                error = error.__cause__ or error.__context__
+            raise
         finally:
             self._should_cancel = lambda: False
 

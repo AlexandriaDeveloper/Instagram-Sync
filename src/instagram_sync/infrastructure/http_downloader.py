@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
+
+from instagram_sync.application.errors import InstagramRateLimitError
 
 
 class UrlLibBinaryDownloader:
@@ -27,6 +30,10 @@ class UrlLibBinaryDownloader:
             # لا يظهر الملف النهائي إلا بعد اكتمال كل البيانات.
             temp_path.replace(path)
 
+        except HTTPError as exc:
+            if exc.code == 429:
+                raise InstagramRateLimitError() from exc
+            raise
         finally:
             if temp_path.exists():
                 temp_path.unlink(missing_ok=True)

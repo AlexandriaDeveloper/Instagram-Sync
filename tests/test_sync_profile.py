@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from instagram_sync.application.errors import InstagramRateLimitError
 from instagram_sync.application.sync_profile import SyncProfileUseCase
 from instagram_sync.domain.models import MediaIdentity, RemoteMedia, SyncRequest
 
@@ -36,6 +37,7 @@ class FakeCatalog:
         self.items: set[tuple[str, str, int]] = set()
         self.run_id = 0
         self.finished_statuses: list[str] = []
+        self.finished_runs: list[tuple[int, int, str, str | None]] = []
 
     def contains(self, profile: str, identity: MediaIdentity) -> bool:
         return (
@@ -71,6 +73,7 @@ class FakeCatalog:
         error: str | None = None,
     ) -> None:
         self.finished_statuses.append(status)
+        self.finished_runs.append((downloaded, skipped, status, error))
 
 
 class FakeDownloader:
@@ -239,3 +242,53 @@ def test_cancel_during_scan_stops_before_download(tmp_path: Path) -> None:
 
     assert downloader.paths == []
     assert catalog.finished_statuses[-1] == "cancelled"
+
+
+@pytest.mark.parametrize("stage", ["scan_start", "scan_partial", "download"])
+def test_rate_limit_finishes_failed_run_and_preserves_progress(tmp_path, stage):
+    media = [
+        RemoteMedia(MediaIdentity(code, 0), "https://example.invalid/a", "image", None, ".jpg")
+        for code in ["AAA", "BBB"]
+    ]
+    error = InstagramRateLimitError()
+
+    class LimitedSource(FakeSource):
+        def iter_profile_media(self, *args, **kwargs):
+            if stage == "scan_start":
+                raise error
+            yield media[0]
+            if stage == "scan_partial":
+                raise error
+            yield media[1]
+
+    class LimitedDownloader(FakeDownloader):
+        def download(self, url, path):
+            super().download(url, path)
+            if len(self.paths) == 2:
+                raise error
+
+    catalog = FakeCatalog()
+    downloader = LimitedDownloader()
+    status = []
+    progress = []
+    use_case = SyncProfileUseCase(LimitedSource(media), catalog, downloader)
+    with pytest.raises(InstagramRateLimitError) as caught:
+        use_case.execute(
+            SyncRequest("example", tmp_path),
+            on_status=status.append,
+            on_progress=lambda current, total: progress.append((current, total)),
+        )
+
+    assert caught.value is error
+    assert status[-1] == str(error)
+    assert not any(message.startswith("Done.") for message in status)
+    if stage == "download":
+        assert catalog.items == {("example", "AAA", 0)}
+        assert catalog.finished_runs == [(1, 0, "failed", str(error))]
+        assert progress == [(0, -1), (1, -1), (2, -1), (0, 2), (1, 2)]
+        assert len(downloader.paths) == 2
+    else:
+        assert catalog.items == set()
+        assert downloader.paths == []
+        assert catalog.finished_runs == [(0, 0, "failed", str(error))]
+        assert progress == ([(0, -1)] if stage == "scan_start" else [(0, -1), (1, -1)])
