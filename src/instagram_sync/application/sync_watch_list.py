@@ -25,6 +25,7 @@ class SyncWatchListUseCase:
         self,
         destination: Path,
         on_status: Callable[[str], None] | None = None,
+        on_progress: Callable[[int, int], None] | None = None,
         should_cancel: Callable[[], bool] | None = None,
     ) -> WatchSyncSummary:
         """عمل Check واحد لكل Watch List بدون أي Polling دوري."""
@@ -49,6 +50,7 @@ class SyncWatchListUseCase:
                         destination=destination,
                     ),
                     on_status=on_status,
+                    on_progress=on_progress,
                     should_cancel=should_cancel,
                 )
                 summary.downloaded += result.downloaded

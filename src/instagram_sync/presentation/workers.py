@@ -14,6 +14,7 @@ class SyncWorker(QThread):
     """تشغيل Sync لحساب واحد خارج UI Thread."""
 
     status = Signal(str)
+    progress = Signal(int, int)
     completed = Signal(int, int)
     failed = Signal(str)
 
@@ -39,6 +40,7 @@ class SyncWorker(QThread):
             result = use_case.execute(
                 self._request,
                 on_status=self.status.emit,
+                on_progress=self.progress.emit,
                 should_cancel=lambda: self._cancelled,
             )
             self.completed.emit(result.downloaded, result.skipped)
@@ -51,6 +53,7 @@ class WatchSyncWorker(QThread):
     """عمل Check واحد للحسابات المختارة في Watch List."""
 
     status = Signal(str)
+    progress = Signal(int, int)
     completed = Signal(int, int, int, int)
     failed = Signal(str)
 
@@ -76,6 +79,7 @@ class WatchSyncWorker(QThread):
             summary = use_case.execute(
                 destination=self._destination,
                 on_status=self.status.emit,
+                on_progress=self.progress.emit,
                 should_cancel=lambda: self._cancelled,
             )
             self.completed.emit(

@@ -93,5 +93,6 @@ class ProfileSyncExecutor(Protocol):
         self,
         request: SyncRequest,
         on_status: Callable[[str], None] | None = None,
+        on_progress: Callable[[int, int], None] | None = None,
         should_cancel: Callable[[], bool] | None = None,
     ) -> SyncResult: ...

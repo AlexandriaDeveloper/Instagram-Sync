@@ -150,6 +150,8 @@ class MainWindow(QMainWindow):
         self._progress = QProgressBar()
         self._progress.setRange(0, 1)
         self._progress.setValue(0)
+        self._progress.setTextVisible(True)
+        self._progress.setFormat("Ready")
         layout.addWidget(self._progress)
 
         self._log = QTextEdit()
@@ -263,9 +265,28 @@ class MainWindow(QMainWindow):
 
         if busy:
             self._progress.setRange(0, 0)
+            self._progress.setFormat("Scanning media...")
         else:
             self._progress.setRange(0, 1)
+            self._progress.setValue(0)
+            self._progress.setFormat("Ready")
+
+    def _update_progress(self, current: int, total: int) -> None:
+        """عرض عدد الملفات والنسبة بعد انتهاء مرحلة الحصر."""
+        if total < 0:
+            self._progress.setRange(0, 0)
+            self._progress.setFormat("Scanning media...")
+            return
+
+        if total == 0:
+            self._progress.setRange(0, 1)
             self._progress.setValue(1)
+            self._progress.setFormat("No media found")
+            return
+
+        self._progress.setRange(0, total)
+        self._progress.setValue(current)
+        self._progress.setFormat(f"{current} / {total} files — %p%")
 
     def _start_manual_sync(self) -> None:
         """مزامنة الحساب المكتوب يدويًا فقط."""
@@ -306,6 +327,7 @@ class MainWindow(QMainWindow):
             username=self._connected_username(),
         )
         self._sync_worker.status.connect(self._log.append)
+        self._sync_worker.progress.connect(self._update_progress)
         self._sync_worker.completed.connect(self._manual_sync_completed)
         self._sync_worker.failed.connect(self._sync_failed)
         self._sync_worker.start()
@@ -375,6 +397,7 @@ class MainWindow(QMainWindow):
             username=self._connected_username(),
         )
         self._watch_worker.status.connect(self._log.append)
+        self._watch_worker.progress.connect(self._update_progress)
         self._watch_worker.completed.connect(self._watch_sync_completed)
         self._watch_worker.failed.connect(self._sync_failed)
         self._watch_worker.start()

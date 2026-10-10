@@ -31,6 +31,7 @@ class SyncProfileUseCase:
         self,
         request: SyncRequest,
         on_status: Callable[[str], None] | None = None,
+        on_progress: Callable[[int, int], None] | None = None,
         should_cancel: Callable[[], bool] | None = None,
     ) -> SyncResult:
         """تنفيذ Full/Incremental Sync حسب ما هو موجود في الـCatalog."""
@@ -48,9 +49,16 @@ class SyncProfileUseCase:
             if on_status:
                 on_status(message)
 
-        try:
-            status(f"Reading @{profile}...")
+        def progress(current: int, total: int) -> None:
+            """تمرير تقدم دقيق؛ total=-1 يعني أن مرحلة الحصر ما زالت جارية."""
+            if on_progress:
+                on_progress(current, total)
 
+        try:
+            status(f"Scanning @{profile} to count media files...")
+            progress(0, -1)
+
+            media_items: list[RemoteMedia] = []
             for media in self._source.iter_profile_media(
                 profile,
                 request.include_posts,
@@ -58,10 +66,20 @@ class SyncProfileUseCase:
             ):
                 if should_cancel and should_cancel():
                     raise SyncCancelled("Synchronization cancelled.")
+                media_items.append(media)
+
+            total = len(media_items)
+            progress(0, total)
+            status(f"Found {total} media file(s) for @{profile}.")
+
+            for index, media in enumerate(media_items, start=1):
+                if should_cancel and should_cancel():
+                    raise SyncCancelled("Synchronization cancelled.")
 
                 # Source of Truth هي قاعدة البيانات، وليس مجرد وجود اسم الملف.
                 if self._catalog.contains(profile, media.identity):
                     result.skipped += 1
+                    progress(index, total)
                     continue
 
                 filename = self._filename(media)
@@ -73,6 +91,7 @@ class SyncProfileUseCase:
                 # لا نسجل العنصر إلا بعد اكتمال التنزيل بنجاح.
                 self._catalog.record_media(profile, media, str(path))
                 result.downloaded += 1
+                progress(index, total)
 
             self._catalog.finish_run(
                 run_id,

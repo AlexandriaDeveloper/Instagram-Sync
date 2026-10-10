@@ -146,3 +146,43 @@ def test_invalid_profile_names_are_rejected(
         use_case.execute(
             SyncRequest(profile, tmp_path)
         )
+
+
+def test_sync_reports_exact_file_progress(tmp_path: Path) -> None:
+    """التقدم يبدأ بالحصر ثم يصبح محددًا حتى اكتمال كل عناصر الميديا."""
+    media = [
+        RemoteMedia(
+            identity=MediaIdentity("AAA", 0),
+            url="https://example.invalid/a",
+            media_type="image",
+            post_date=None,
+            extension=".jpg",
+        ),
+        RemoteMedia(
+            identity=MediaIdentity("BBB", 0),
+            url="https://example.invalid/b",
+            media_type="video",
+            post_date=None,
+            extension=".mp4",
+        ),
+    ]
+    progress_events: list[tuple[int, int]] = []
+
+    use_case = SyncProfileUseCase(
+        FakeSource(media),
+        FakeCatalog(),
+        FakeDownloader(),
+    )
+    use_case.execute(
+        SyncRequest("example", tmp_path),
+        on_progress=lambda current, total: progress_events.append(
+            (current, total)
+        ),
+    )
+
+    assert progress_events == [
+        (0, -1),
+        (0, 2),
+        (1, 2),
+        (2, 2),
+    ]
