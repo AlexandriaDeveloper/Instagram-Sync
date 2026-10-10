@@ -43,6 +43,7 @@ class FakeSyncExecutor:
         self,
         request: SyncRequest,
         on_status=None,
+        on_progress=None,
         should_cancel=None,
     ) -> SyncResult:
         self.profiles.append(request.profile)
