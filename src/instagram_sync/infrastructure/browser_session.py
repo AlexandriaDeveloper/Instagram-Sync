@@ -1,12 +1,13 @@
 """استيراد Instagram Session من Cookies المتصفح المحلي.
 
-لا يتم قراءة أو طلب Password. القيم الحساسة تظل على جهاز المستخدم.
+لا يتم طلب Password. القيم الحساسة تظل على جهاز المستخدم.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from http.cookiejar import CookieJar
+from typing import ClassVar
 
 import browser_cookie3
 import instaloader
@@ -18,7 +19,7 @@ from instagram_sync.paths import session_path
 class InstaloaderBrowserSessionImporter:
     """استخدام browser_cookie3 ثم حفظ Session بصيغة Instaloader."""
 
-    _BROWSERS: dict[str, Callable[..., CookieJar]] = {
+    _BROWSERS: ClassVar[dict[str, Callable[..., CookieJar]]] = {
         "brave": browser_cookie3.brave,
         "chrome": browser_cookie3.chrome,
         "chromium": browser_cookie3.chromium,
@@ -38,7 +39,6 @@ class InstaloaderBrowserSessionImporter:
         if browser_reader is None:
             raise ValueError(f"Unsupported browser: {browser}")
 
-        # browser_cookie3 يقرأ Cookie Jar من Profile المتصفح الحالي.
         cookie_jar = browser_reader()
         instagram_cookies = {
             cookie.name: cookie.value
@@ -48,21 +48,20 @@ class InstaloaderBrowserSessionImporter:
 
         if not instagram_cookies:
             raise RuntimeError(
-                "No Instagram cookies were found. Log in to Instagram in the selected browser first."
+                "No Instagram cookies were found. "
+                "Log in to Instagram in the selected browser first."
             )
 
         loader = instaloader.Instaloader(quiet=True)
-
-        # Instaloader يدعم تحديث Cookies ثم test_login للتحقق من صلاحية Session.
         loader.context.update_cookies(instagram_cookies)
         username = loader.test_login()
 
         if not username:
             raise RuntimeError(
-                "Instagram session could not be verified. Re-login in the browser and try again."
+                "Instagram session could not be verified. "
+                "Re-login in the browser and try again."
             )
 
-        # حفظ Session محليًا حتى لا نحتاج قراءة المتصفح في كل تشغيل.
         loader.context.username = username
         loader.save_session_to_file(filename=str(session_path(username)))
 

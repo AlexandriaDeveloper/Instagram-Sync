@@ -40,7 +40,7 @@ class SyncRequest:
 
 @dataclass(slots=True)
 class SyncResult:
-    """نتيجة المزامنة التي تعرض للواجهة."""
+    """نتيجة مزامنة حساب واحد."""
 
     downloaded: int = 0
     skipped: int = 0
@@ -48,7 +48,25 @@ class SyncResult:
 
 @dataclass(frozen=True, slots=True)
 class SessionInfo:
-    """معلومات Session ناجحة بدون أي Password أو Cookie values."""
+    """معلومات Session ناجحة بدون Password أو Cookie values."""
 
     username: str
     browser: str
+
+
+@dataclass(frozen=True, slots=True)
+class WatchProfile:
+    """حساب اختاره المستخدم صراحةً للمزامنة عند فتح البرنامج."""
+
+    profile: str
+    last_checked_at: str | None = None
+
+
+@dataclass(slots=True)
+class WatchSyncSummary:
+    """ملخص مزامنة كل الحسابات الموجودة في Watch List."""
+
+    checked_profiles: int = 0
+    downloaded: int = 0
+    skipped: int = 0
+    failed_profiles: int = 0

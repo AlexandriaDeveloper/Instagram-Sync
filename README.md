@@ -2,28 +2,43 @@
 
 برنامج Desktop شخصي لتنزيل ومزامنة الصور والفيديوهات من حسابات Instagram التي يحق لك الوصول إليها.
 
-## الفكرة
+## السلوك الأساسي
 
-- أول مرة: البرنامج يقرأ المحتوى المتاح في الحساب وينزله.
-- بعد ذلك: كل عملية **Sync** تنزل العناصر الجديدة فقط.
-- كل عنصر يتم تعريفه بمفتاح ثابت: `shortcode + item_index`.
-- قاعدة SQLite محلية تحفظ ما تم تنزيله، لذلك لا نعتمد على اسم الملف فقط.
+- Manual Sync لأي حساب تكتبه.
+- أول Sync ينزل المحتوى المتاح.
+- بعد ذلك ينزل العناصر الجديدة فقط.
 - يدعم Posts وReels وCarousel.
-- لا يخزن كلمة مرور Instagram.
-- يمكن استيراد جلسة تسجيل الدخول من متصفح محلي مسجل فيه Instagram.
+- SQLite محلية تمنع التكرار باستخدام `shortcode + item_index`.
 
-## حدود الاستخدام
+## Watch List
 
-استخدم البرنامج للحسابات العامة أو المحتوى الذي لديك صلاحية للوصول إليه.
-البرنامج لا يتجاوز Private Account أو 2FA أو صلاحيات Instagram.
+يمكنك إضافة حسابات محددة إلى Watch List داخل البرنامج.
 
-## المتطلبات
+**هذه القائمة مستقلة تمامًا عن الأشخاص الذين تعمل لهم Follow على Instagram.**
 
-- Python 3.11 أو أحدث.
-- Windows 10/11 هو الهدف الأساسي.
-- Chrome / Edge / Firefox أو متصفح مدعوم إذا أردت استيراد Session.
+عند كل مرة تفتح فيها البرنامج:
 
-## التشغيل من الكود
+1. يحصل Check واحد فقط للحسابات الموجودة في Watch List.
+2. ينزل الجديد فقط.
+3. يحدث Last Check.
+4. يتوقف الـWorker.
+
+لا يوجد Check كل 15 أو 30 دقيقة، ولا Background Polling.
+
+يمكنك أيضًا الضغط على **Check Watch List Now** في أي وقت.
+
+## تسجيل الدخول
+
+البرنامج لا يطلب Password.
+
+لو تحتاج Session:
+
+1. سجل الدخول إلى Instagram في متصفحك الطبيعي.
+2. اختر المتصفح داخل البرنامج.
+3. اضغط **Connect from Browser**.
+4. البرنامج يستورد Session محليًا ويخزنها خارج Git.
+
+## التشغيل
 
 ```powershell
 git clone https://github.com/AlexandriaDeveloper/Instagram-Sync.git
@@ -37,57 +52,13 @@ pip install -e .
 python -m instagram_sync
 ```
 
-## طريقة الاستخدام
-
-1. اكتب اسم الحساب المطلوب مزامنته.
-2. اختر مجلد الحفظ.
-3. لو الحساب عام، جرّب **Sync Now** مباشرة.
-4. لو تحتاج تسجيل الدخول:
-   - سجل دخولك إلى Instagram في متصفحك الطبيعي.
-   - اختر المتصفح من البرنامج.
-   - اضغط **Connect from Browser**.
-   - البرنامج يستورد Cookies الخاصة بـInstagram محليًا، يتحقق من الجلسة، ثم يحفظ Session محلية.
-5. اضغط **Sync Now**.
-
-## بناء EXE على Windows
+## Build Windows
 
 ```bat
 build_windows.bat
 ```
 
-الناتج:
-
-```text
-dist\InstagramSync\InstagramSync.exe
-```
-
-## أين توجد البيانات؟
-
-البرنامج لا يضع قاعدة البيانات أو Session داخل Git.
-
-بيانات التطبيق توضع في مجلد Application Data الخاص بنظام التشغيل، وتشمل:
-
-- SQLite database.
-- Instagram session file.
-
-ملفات الصور والفيديوهات تذهب فقط إلى مجلد التنزيل الذي تختاره.
-
-## المعمارية
-
-```text
-presentation
-    |
-composition (Dependency Injection)
-    |
-application (use cases + ports)
-    |
-domain
-    ^
-    |
-infrastructure (implements ports)
-```
-
-التفاصيل موجودة في:
+## التوثيق
 
 - `docs/ARCHITECTURE.md`
 - `docs/AI_HANDOFF.md`
@@ -100,5 +71,3 @@ pip install -e .[dev]
 ruff check src tests
 pytest -q
 ```
-
-GitHub Actions يشغل نفس الفحوصات تلقائيًا مع كل Push وPull Request.

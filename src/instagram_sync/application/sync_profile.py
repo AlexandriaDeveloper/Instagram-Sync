@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from instagram_sync.application.ports import BinaryDownloader, MediaCatalog, MediaSource
+from instagram_sync.application.profile_name import normalize_profile_name
 from instagram_sync.domain.models import RemoteMedia, SyncRequest, SyncResult
 
 
@@ -33,7 +34,7 @@ class SyncProfileUseCase:
         should_cancel: Callable[[], bool] | None = None,
     ) -> SyncResult:
         """تنفيذ Full/Incremental Sync حسب ما هو موجود في الـCatalog."""
-        profile = self._normalize_profile(request.profile)
+        profile = normalize_profile_name(request.profile)
 
         # كل حساب يأخذ مجلد مستقل لمنع خلط ملفات الحسابات.
         profile_dir = request.destination / profile
@@ -50,7 +51,6 @@ class SyncProfileUseCase:
         try:
             status(f"Reading @{profile}...")
 
-            # المصدر قد يعيد Posts وReels؛ قرار التكرار يتم هنا مركزيًا.
             for media in self._source.iter_profile_media(
                 profile,
                 request.include_posts,
@@ -59,7 +59,7 @@ class SyncProfileUseCase:
                 if should_cancel and should_cancel():
                     raise SyncCancelled("Synchronization cancelled.")
 
-                # لو الهوية مسجلة، لا نعيد تنزيل الملف حتى لو ظهر مرة أخرى.
+                # Source of Truth هي قاعدة البيانات، وليس مجرد وجود اسم الملف.
                 if self._catalog.contains(profile, media.identity):
                     result.skipped += 1
                     continue
@@ -86,7 +86,7 @@ class SyncProfileUseCase:
             return result
 
         except Exception as exc:
-            # تسجيل الفشل مهم للتدقيق ومعرفة ما حدث في آخر Sync.
+            # هذا Boundary مقصود لتسجيل نتيجة Run حتى لو كان الخطأ من شبكة أو Instagram.
             self._catalog.finish_run(
                 run_id,
                 result.downloaded,
@@ -95,20 +95,6 @@ class SyncProfileUseCase:
                 str(exc),
             )
             raise
-
-    @staticmethod
-    def _normalize_profile(profile: str) -> str:
-        """تنظيف اسم الحساب ومنع Path Traversal أو أحرف غير صالحة."""
-        value = profile.strip().lstrip("@").lower()
-
-        if not value:
-            raise ValueError("Profile name is required.")
-
-        allowed = set("abcdefghijklmnopqrstuvwxyz0123456789._")
-        if len(value) > 30 or any(character not in allowed for character in value):
-            raise ValueError("Invalid Instagram profile name.")
-
-        return value
 
     @staticmethod
     def _filename(media: RemoteMedia) -> str:

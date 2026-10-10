@@ -1,15 +1,19 @@
-"""العقود Ports التي تفصل منطق التطبيق عن التقنيات الخارجية.
-
-تطبيق Dependency Inversion:
-الـUse Cases تعتمد على هذه العقود، بينما SQLite وInstaloader تنفذها.
-"""
+"""العقود Ports التي تفصل منطق التطبيق عن التقنيات الخارجية."""
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import Iterable, Protocol
+from typing import Protocol
 
-from instagram_sync.domain.models import MediaIdentity, RemoteMedia, SessionInfo
+from instagram_sync.domain.models import (
+    MediaIdentity,
+    RemoteMedia,
+    SessionInfo,
+    SyncRequest,
+    SyncResult,
+    WatchProfile,
+)
 
 
 class MediaSource(Protocol):
@@ -57,3 +61,26 @@ class BrowserSessionImporter(Protocol):
     """مسؤول عن استيراد Session من متصفح محلي."""
 
     def import_session(self, browser: str) -> SessionInfo: ...
+
+
+class WatchListRepository(Protocol):
+    """مخزن مستقل للحسابات التي اختار المستخدم متابعتها داخل البرنامج."""
+
+    def list_profiles(self) -> list[WatchProfile]: ...
+
+    def add_profile(self, profile: str) -> None: ...
+
+    def remove_profile(self, profile: str) -> None: ...
+
+    def mark_checked(self, profile: str) -> None: ...
+
+
+class ProfileSyncExecutor(Protocol):
+    """عقد يسمح بمزامنة حساب واحد بدون ربط Watch List بتنفيذ محدد."""
+
+    def execute(
+        self,
+        request: SyncRequest,
+        on_status: Callable[[str], None] | None = None,
+        should_cancel: Callable[[], bool] | None = None,
+    ) -> SyncResult: ...

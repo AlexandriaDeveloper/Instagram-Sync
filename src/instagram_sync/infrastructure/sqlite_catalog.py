@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from instagram_sync.domain.models import MediaIdentity, RemoteMedia
@@ -79,7 +79,7 @@ class SQLiteMediaCatalog:
         filename: str,
     ) -> None:
         """تسجيل عنصر تم تنزيله بنجاح؛ UNIQUE يمنع التكرار."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         with self._connect() as connection:
             connection.execute(
@@ -104,7 +104,7 @@ class SQLiteMediaCatalog:
 
     def start_run(self, profile: str) -> int:
         """بدء سجل Audit لعملية Sync وإرجاع رقمها."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         with self._connect() as connection:
             cursor = connection.execute(
@@ -125,7 +125,7 @@ class SQLiteMediaCatalog:
         error: str | None = None,
     ) -> None:
         """إغلاق سجل Sync بالنتيجة النهائية."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         with self._connect() as connection:
             connection.execute(
