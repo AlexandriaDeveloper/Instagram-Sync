@@ -4,11 +4,13 @@
 """
 
 from instagram_sync.application.connect_session import ConnectSessionUseCase
+from instagram_sync.application.manage_session import ManageSessionUseCase
 from instagram_sync.application.sync_profile import SyncProfileUseCase
 from instagram_sync.application.sync_watch_list import SyncWatchListUseCase
 from instagram_sync.application.watch_list import ManageWatchListUseCase
 from instagram_sync.infrastructure.http_downloader import UrlLibBinaryDownloader
 from instagram_sync.infrastructure.instagram_source import InstaloaderMediaSource
+from instagram_sync.infrastructure.local_session_store import LocalSessionStore
 from instagram_sync.infrastructure.session_writer import InstaloaderSessionWriter
 from instagram_sync.infrastructure.sqlite_catalog import SQLiteMediaCatalog
 from instagram_sync.infrastructure.sqlite_watch_list import SQLiteWatchListRepository
@@ -30,6 +32,13 @@ def build_connect_session_use_case() -> ConnectSessionUseCase:
     """تجميع Dependencies الخاصة بحفظ Session الموثقة."""
     return ConnectSessionUseCase(
         writer=InstaloaderSessionWriter(),
+    )
+
+
+def build_manage_session_use_case() -> ManageSessionUseCase:
+    """تجميع إدارة Session المحلية بعيدًا عن طبقة العرض."""
+    return ManageSessionUseCase(
+        store=LocalSessionStore(),
     )
 
 

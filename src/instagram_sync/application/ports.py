@@ -66,6 +66,14 @@ class SessionWriter(Protocol):
     ) -> SessionInfo: ...
 
 
+class SessionStore(Protocol):
+    """قراءة وحذف Session المحلية بدون كشف تفاصيل التخزين للواجهة."""
+
+    def exists(self, username: str) -> bool: ...
+
+    def remove(self, username: str) -> None: ...
+
+
 class WatchListRepository(Protocol):
     """مخزن مستقل للحسابات التي اختار المستخدم متابعتها داخل البرنامج."""
 

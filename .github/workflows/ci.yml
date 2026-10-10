@@ -51,7 +51,7 @@ jobs:
       - name: Build EXE
         shell: pwsh
         run: |
-          pyinstaller --noconfirm --clean --windowed --name InstagramSync --paths src --collect-all browser_cookie3 src\instagram_sync\__main__.py
+          pyinstaller --noconfirm --clean --windowed --name InstagramSync --paths src src\instagram_sync\__main__.py
 
       - name: Upload Windows build
         uses: actions/upload-artifact@v4
