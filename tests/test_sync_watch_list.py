@@ -2,6 +2,9 @@
 
 from pathlib import Path
 
+import pytest
+
+from instagram_sync.application.errors import InstagramRateLimitError
 from instagram_sync.application.sync_watch_list import SyncWatchListUseCase
 from instagram_sync.domain.models import (
     SyncRequest,
@@ -67,3 +70,35 @@ def test_watch_sync_runs_only_for_watch_list(tmp_path: Path) -> None:
     assert summary.downloaded == 2
     assert summary.skipped == 4
     assert summary.failed_profiles == 0
+
+
+def test_rate_limit_stops_watch_list_before_next_profile(tmp_path):
+    repository = FakeWatchRepository()
+
+    class LimitedExecutor(FakeSyncExecutor):
+        def execute(self, request, **kwargs):
+            self.profiles.append(request.profile)
+            raise InstagramRateLimitError()
+
+    executor = LimitedExecutor()
+    with pytest.raises(InstagramRateLimitError):
+        SyncWatchListUseCase(repository, executor).execute(tmp_path)
+    assert executor.profiles == ["alpha"]
+    assert repository.checked == []
+
+
+def test_other_profile_failure_still_continues_watch_list(tmp_path):
+    repository = FakeWatchRepository()
+
+    class FailingExecutor(FakeSyncExecutor):
+        def execute(self, request, **kwargs):
+            if request.profile == "alpha":
+                self.profiles.append(request.profile)
+                raise RuntimeError("unrelated failure")
+            return super().execute(request, **kwargs)
+
+    executor = FailingExecutor()
+    summary = SyncWatchListUseCase(repository, executor).execute(tmp_path)
+    assert executor.profiles == ["alpha", "beta"]
+    assert repository.checked == ["beta"]
+    assert summary.failed_profiles == 1

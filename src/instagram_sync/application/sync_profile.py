@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from concurrent.futures import CancelledError
 
+from instagram_sync.application.errors import InstagramRateLimitError
 from instagram_sync.application.ports import BinaryDownloader, MediaCatalog, MediaSource
 from instagram_sync.application.profile_name import normalize_profile_name
 from instagram_sync.domain.models import RemoteMedia, SyncRequest, SyncResult
@@ -112,6 +113,17 @@ class SyncProfileUseCase:
                 str(exc),
             )
             status("Synchronization cancelled.")
+            raise
+
+        except InstagramRateLimitError as exc:
+            self._catalog.finish_run(
+                run_id,
+                result.downloaded,
+                result.skipped,
+                "failed",
+                str(exc),
+            )
+            status(str(exc))
             raise
 
         except Exception as exc:

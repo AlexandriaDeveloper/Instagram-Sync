@@ -6,6 +6,7 @@ from collections.abc import Callable
 from concurrent.futures import CancelledError
 from pathlib import Path
 
+from instagram_sync.application.errors import InstagramRateLimitError
 from instagram_sync.application.ports import ProfileSyncExecutor, WatchListRepository
 from instagram_sync.domain.models import SyncRequest, WatchSyncSummary
 
@@ -58,6 +59,9 @@ class SyncWatchListUseCase:
                 summary.skipped += result.skipped
                 self._repository.mark_checked(watched.profile)
             except CancelledError:
+                raise
+            except InstagramRateLimitError:
+                # الحظر قد يشمل Session/IP؛ نوقف القائمة قبل طلب حساب آخر.
                 raise
             # فصل فشل حساب واحد عن باقي القائمة مقصود حتى لا تتوقف Watch List كلها.
             except Exception as exc:  # noqa: BLE001
