@@ -14,9 +14,7 @@ def normalize_profile_name(profile: str) -> str:
         value = value[1:]
     else:
         lowered = value.lower()
-        if lowered.startswith("instagram.com/") or lowered.startswith(
-            "www.instagram.com/"
-        ):
+        if lowered.startswith(("instagram.com/", "www.instagram.com/")):
             value = f"https://{value}"
 
         if "://" in value:
