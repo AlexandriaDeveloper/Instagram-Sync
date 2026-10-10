@@ -535,11 +535,9 @@ class MainWindow(QMainWindow):
         self._set_sync_busy(False)
         self._refresh_watch_list()
         self._log.append(
-            (
-                "Watch List check complete. "
-                f"Profiles: {checked}, new: {downloaded}, "
-                f"existing: {skipped}, failed: {failed}."
-            )
+            "Watch List check complete. "
+            f"Profiles: {checked}, new: {downloaded}, "
+            f"existing: {skipped}, failed: {failed}."
         )
 
     def _sync_failed(self, message: str) -> None:
