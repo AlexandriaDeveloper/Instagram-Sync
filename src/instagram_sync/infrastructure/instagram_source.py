@@ -11,7 +11,6 @@ import instaloader
 from instagram_sync.domain.models import MediaIdentity, RemoteMedia
 from instagram_sync.paths import session_path
 
-
 _CANCEL_MESSAGE = "Synchronization cancelled."
 
 
