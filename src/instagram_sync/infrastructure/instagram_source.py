@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable, Iterator
 from concurrent.futures import CancelledError
-import time
 
 import instaloader
 
