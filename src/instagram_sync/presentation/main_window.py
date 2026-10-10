@@ -11,6 +11,7 @@ from PySide6.QtCore import QSettings, QTimer
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
+    QDialog,
     QFileDialog,
     QFormLayout,
     QGroupBox,
@@ -198,7 +199,7 @@ class MainWindow(QMainWindow):
         """فتح صفحة Instagram في Browser خاص بالتطبيق وحفظ Session بعد نجاح الدخول."""
         dialog = InstagramLoginDialog(self)
 
-        if dialog.exec() != dialog.Accepted:
+        if dialog.exec() != QDialog.DialogCode.Accepted:
             return
 
         try:
