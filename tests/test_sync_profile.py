@@ -1,5 +1,7 @@
 """اختبارات Use Case بدون شبكة أو Instagram حقيقي."""
 
+from collections.abc import Callable
+from concurrent.futures import CancelledError
 from pathlib import Path
 
 import pytest
@@ -19,8 +21,12 @@ class FakeSource:
         profile_name: str,
         include_posts: bool = True,
         include_reels: bool = True,
+        should_cancel: Callable[[], bool] | None = None,
     ):
-        return iter(self.media)
+        for media in self.media:
+            if should_cancel and should_cancel():
+                raise CancelledError("Synchronization cancelled.")
+            yield media
 
 
 class FakeCatalog:
@@ -29,6 +35,7 @@ class FakeCatalog:
     def __init__(self) -> None:
         self.items: set[tuple[str, str, int]] = set()
         self.run_id = 0
+        self.finished_statuses: list[str] = []
 
     def contains(self, profile: str, identity: MediaIdentity) -> bool:
         return (
@@ -63,7 +70,7 @@ class FakeCatalog:
         status: str,
         error: str | None = None,
     ) -> None:
-        return None
+        self.finished_statuses.append(status)
 
 
 class FakeDownloader:
@@ -182,7 +189,53 @@ def test_sync_reports_exact_file_progress(tmp_path: Path) -> None:
 
     assert progress_events == [
         (0, -1),
+        (1, -1),
+        (2, -1),
         (0, 2),
         (1, 2),
         (2, 2),
     ]
+
+
+def test_cancel_during_scan_stops_before_download(tmp_path: Path) -> None:
+    """طلب الإلغاء أثناء الحصر يمنع الانتقال لمرحلة التنزيل."""
+    media = [
+        RemoteMedia(
+            identity=MediaIdentity("AAA", 0),
+            url="https://example.invalid/a",
+            media_type="image",
+            post_date=None,
+            extension=".jpg",
+        ),
+        RemoteMedia(
+            identity=MediaIdentity("BBB", 0),
+            url="https://example.invalid/b",
+            media_type="image",
+            post_date=None,
+            extension=".jpg",
+        ),
+    ]
+    catalog = FakeCatalog()
+    downloader = FakeDownloader()
+    use_case = SyncProfileUseCase(
+        FakeSource(media),
+        catalog,
+        downloader,
+    )
+
+    cancel_requested = False
+
+    def on_progress(current: int, total: int) -> None:
+        nonlocal cancel_requested
+        if total < 0 and current == 1:
+            cancel_requested = True
+
+    with pytest.raises(CancelledError, match="Synchronization cancelled"):
+        use_case.execute(
+            SyncRequest("example", tmp_path),
+            on_progress=on_progress,
+            should_cancel=lambda: cancel_requested,
+        )
+
+    assert downloader.paths == []
+    assert catalog.finished_statuses[-1] == "cancelled"

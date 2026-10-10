@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import CancelledError
 from pathlib import Path
 
 from PySide6.QtCore import QThread, Signal
@@ -16,6 +17,7 @@ class SyncWorker(QThread):
     status = Signal(str)
     progress = Signal(int, int)
     completed = Signal(int, int)
+    cancelled = Signal()
     failed = Signal(str)
 
     def __init__(
@@ -44,6 +46,8 @@ class SyncWorker(QThread):
                 should_cancel=lambda: self._cancelled,
             )
             self.completed.emit(result.downloaded, result.skipped)
+        except CancelledError:
+            self.cancelled.emit()
         except Exception as exc:  # noqa: BLE001
             # هذا Boundary مقصود لتحويل أخطاء الشبكة أو Instagram إلى Signal للواجهة.
             self.failed.emit(str(exc))
@@ -55,6 +59,7 @@ class WatchSyncWorker(QThread):
     status = Signal(str)
     progress = Signal(int, int)
     completed = Signal(int, int, int, int)
+    cancelled = Signal()
     failed = Signal(str)
 
     def __init__(
@@ -88,6 +93,8 @@ class WatchSyncWorker(QThread):
                 summary.skipped,
                 summary.failed_profiles,
             )
+        except CancelledError:
+            self.cancelled.emit()
         except Exception as exc:  # noqa: BLE001
             # منع فشل Thread بصمت وإرجاع الخطأ للواجهة بشكل موحد.
             self.failed.emit(str(exc))

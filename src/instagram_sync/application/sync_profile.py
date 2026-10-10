@@ -3,14 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from concurrent.futures import CancelledError
 
 from instagram_sync.application.ports import BinaryDownloader, MediaCatalog, MediaSource
 from instagram_sync.application.profile_name import normalize_profile_name
 from instagram_sync.domain.models import RemoteMedia, SyncRequest, SyncResult
-
-
-class SyncCancelled(Exception):
-    """استثناء واضح عند طلب المستخدم إلغاء المزامنة."""
 
 
 class SyncProfileUseCase:
@@ -63,10 +60,12 @@ class SyncProfileUseCase:
                 profile,
                 request.include_posts,
                 request.include_reels,
+                should_cancel=should_cancel,
             ):
                 if should_cancel and should_cancel():
-                    raise SyncCancelled("Synchronization cancelled.")
+                    raise CancelledError("Synchronization cancelled.")
                 media_items.append(media)
+                progress(len(media_items), -1)
 
             total = len(media_items)
             progress(0, total)
@@ -74,7 +73,7 @@ class SyncProfileUseCase:
 
             for index, media in enumerate(media_items, start=1):
                 if should_cancel and should_cancel():
-                    raise SyncCancelled("Synchronization cancelled.")
+                    raise CancelledError("Synchronization cancelled.")
 
                 # Source of Truth هي قاعدة البيانات، وليس مجرد وجود اسم الملف.
                 if self._catalog.contains(profile, media.identity):
@@ -103,6 +102,17 @@ class SyncProfileUseCase:
                 f"Done. Downloaded {result.downloaded}, skipped {result.skipped}."
             )
             return result
+
+        except CancelledError as exc:
+            self._catalog.finish_run(
+                run_id,
+                result.downloaded,
+                result.skipped,
+                "cancelled",
+                str(exc),
+            )
+            status("Synchronization cancelled.")
+            raise
 
         except Exception as exc:
             # هذا Boundary مقصود لتسجيل نتيجة Run حتى لو كان الخطأ من شبكة أو Instagram.

@@ -275,7 +275,9 @@ class MainWindow(QMainWindow):
         """عرض عدد الملفات والنسبة بعد انتهاء مرحلة الحصر."""
         if total < 0:
             self._progress.setRange(0, 0)
-            self._progress.setFormat("Scanning media...")
+            self._progress.setFormat(
+                f"Scanning media... {current} found"
+            )
             return
 
         if total == 0:
@@ -329,6 +331,7 @@ class MainWindow(QMainWindow):
         self._sync_worker.status.connect(self._log.append)
         self._sync_worker.progress.connect(self._update_progress)
         self._sync_worker.completed.connect(self._manual_sync_completed)
+        self._sync_worker.cancelled.connect(self._sync_cancelled)
         self._sync_worker.failed.connect(self._sync_failed)
         self._sync_worker.start()
 
@@ -399,6 +402,7 @@ class MainWindow(QMainWindow):
         self._watch_worker.status.connect(self._log.append)
         self._watch_worker.progress.connect(self._update_progress)
         self._watch_worker.completed.connect(self._watch_sync_completed)
+        self._watch_worker.cancelled.connect(self._sync_cancelled)
         self._watch_worker.failed.connect(self._sync_failed)
         self._watch_worker.start()
 
@@ -410,7 +414,14 @@ class MainWindow(QMainWindow):
         if self._watch_worker and self._watch_worker.isRunning():
             self._watch_worker.cancel()
 
+        self._cancel_button.setEnabled(False)
+        self._progress.setFormat("Cancelling...")
         self._log.append("Cancellation requested...")
+
+    def _sync_cancelled(self) -> None:
+        """إعادة الواجهة لحالتها الطبيعية بعد إلغاء مقصود."""
+        self._set_sync_busy(False)
+        self._log.append("Synchronization cancelled.")
 
     def _manual_sync_completed(
         self,

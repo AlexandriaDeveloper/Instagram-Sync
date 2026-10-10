@@ -24,6 +24,7 @@ class MediaSource(Protocol):
         profile_name: str,
         include_posts: bool = True,
         include_reels: bool = True,
+        should_cancel: Callable[[], bool] | None = None,
     ) -> Iterable[RemoteMedia]: ...
 
 

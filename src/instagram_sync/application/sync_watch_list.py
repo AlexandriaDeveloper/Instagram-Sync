@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from concurrent.futures import CancelledError
 from pathlib import Path
 
 from instagram_sync.application.ports import ProfileSyncExecutor, WatchListRepository
@@ -38,7 +39,7 @@ class SyncWatchListUseCase:
 
         for watched in self._repository.list_profiles():
             if should_cancel and should_cancel():
-                break
+                raise CancelledError("Synchronization cancelled.")
 
             summary.checked_profiles += 1
             status(f"Checking watched profile @{watched.profile}...")
@@ -56,6 +57,8 @@ class SyncWatchListUseCase:
                 summary.downloaded += result.downloaded
                 summary.skipped += result.skipped
                 self._repository.mark_checked(watched.profile)
+            except CancelledError:
+                raise
             # فصل فشل حساب واحد عن باقي القائمة مقصود حتى لا تتوقف Watch List كلها.
             except Exception as exc:  # noqa: BLE001
                 summary.failed_profiles += 1
