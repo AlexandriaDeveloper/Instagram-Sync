@@ -1,7 +1,16 @@
 @echo off
 setlocal
+
+REM تثبيت المشروع وأدوات التطوير قبل إنشاء نسخة Windows.
 py -m pip install -e .[dev]
-pyinstaller --noconfirm --clean --windowed --name InstagramSync --paths src src\instagram_sync\__main__.py
+
+REM إنشاء تطبيق GUI بدون نافذة Console.
+pyinstaller --noconfirm --clean --windowed ^
+  --name InstagramSync ^
+  --paths src ^
+  --collect-all browser_cookie3 ^
+  src\instagram_sync\__main__.py
+
 echo.
 echo Build complete: dist\InstagramSync\InstagramSync.exe
 endlocal

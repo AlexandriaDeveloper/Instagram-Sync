@@ -1,54 +1,104 @@
 # Instagram Sync
 
-Desktop app for synchronizing media from Instagram profiles you are allowed to access.
+برنامج Desktop شخصي لتنزيل ومزامنة الصور والفيديوهات من حسابات Instagram التي يحق لك الوصول إليها.
 
-## Features
+## الفكرة
 
-- Full sync on first run.
-- Incremental sync afterwards: already-recorded media is skipped.
-- Posts, Reels and carousel media.
-- Local SQLite catalog keyed by shortcode + media index.
-- Instagram session reuse through Instaloader session files.
-- No Instagram password is stored in the repository or database.
-- Windows EXE build script included.
+- أول مرة: البرنامج يقرأ المحتوى المتاح في الحساب وينزله.
+- بعد ذلك: كل عملية **Sync** تنزل العناصر الجديدة فقط.
+- كل عنصر يتم تعريفه بمفتاح ثابت: `shortcode + item_index`.
+- قاعدة SQLite محلية تحفظ ما تم تنزيله، لذلك لا نعتمد على اسم الملف فقط.
+- يدعم Posts وReels وCarousel.
+- لا يخزن كلمة مرور Instagram.
+- يمكن استيراد جلسة تسجيل الدخول من متصفح محلي مسجل فيه Instagram.
 
-## Requirements
+## حدود الاستخدام
 
-- Python 3.11+
-- Windows 10/11 recommended
+استخدم البرنامج للحسابات العامة أو المحتوى الذي لديك صلاحية للوصول إليه.
+البرنامج لا يتجاوز Private Account أو 2FA أو صلاحيات Instagram.
 
-## Run
+## المتطلبات
+
+- Python 3.11 أو أحدث.
+- Windows 10/11 هو الهدف الأساسي.
+- Chrome / Edge / Firefox أو متصفح مدعوم إذا أردت استيراد Session.
+
+## التشغيل من الكود
 
 ```powershell
 git clone https://github.com/AlexandriaDeveloper/Instagram-Sync.git
 cd Instagram-Sync
+
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
+
 python -m pip install -U pip
 pip install -e .
 python -m instagram_sync
 ```
 
-## Login
+## طريقة الاستخدام
 
-For public profiles, login may not be required. For profiles your Instagram account can access,
-enter your Instagram username in Settings and use **Load Session** after creating an Instaloader
-session locally. The app never asks for your Instagram password.
+1. اكتب اسم الحساب المطلوب مزامنته.
+2. اختر مجلد الحفظ.
+3. لو الحساب عام، جرّب **Sync Now** مباشرة.
+4. لو تحتاج تسجيل الدخول:
+   - سجل دخولك إلى Instagram في متصفحك الطبيعي.
+   - اختر المتصفح من البرنامج.
+   - اضغط **Connect from Browser**.
+   - البرنامج يستورد Cookies الخاصة بـInstagram محليًا، يتحقق من الجلسة، ثم يحفظ Session محلية.
+5. اضغط **Sync Now**.
 
-## Build Windows EXE
+## بناء EXE على Windows
 
 ```bat
 build_windows.bat
 ```
 
-Output: `dist\InstagramSync\InstagramSync.exe`.
+الناتج:
 
-## Data
+```text
+dist\InstagramSync\InstagramSync.exe
+```
 
-App data is stored under the OS application-data directory. Downloads are saved to the folder
-you select in the UI. SQLite stores synchronization metadata only.
+## أين توجد البيانات؟
 
-## Safety
+البرنامج لا يضع قاعدة البيانات أو Session داخل Git.
 
-Use only for public profiles or content you are authorized to access. The app does not bypass
-private-account restrictions, 2FA, or Instagram permissions.
+بيانات التطبيق توضع في مجلد Application Data الخاص بنظام التشغيل، وتشمل:
+
+- SQLite database.
+- Instagram session file.
+
+ملفات الصور والفيديوهات تذهب فقط إلى مجلد التنزيل الذي تختاره.
+
+## المعمارية
+
+```text
+presentation
+    |
+composition (Dependency Injection)
+    |
+application (use cases + ports)
+    |
+domain
+    ^
+    |
+infrastructure (implements ports)
+```
+
+التفاصيل موجودة في:
+
+- `docs/ARCHITECTURE.md`
+- `docs/AI_HANDOFF.md`
+- `docs/SECURITY.md`
+
+## الاختبارات
+
+```powershell
+pip install -e .[dev]
+ruff check src tests
+pytest -q
+```
+
+GitHub Actions يشغل نفس الفحوصات تلقائيًا مع كل Push وPull Request.
